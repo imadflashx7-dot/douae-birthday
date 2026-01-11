@@ -1,0 +1,1981 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Happy Birthday Douae — Matrix Dev Challenge</title>
+
+  <!-- QR Code library -->
+  <script src="./qrcode.min.js"></script>
+
+
+  <style>
+    :root{
+      --text: rgba(255,255,255,.94);
+      --muted: rgba(255,255,255,.72);
+      --shadow: 0 22px 70px rgba(0,0,0,.45);
+      --pink: rgb(255,120,200);
+      --pinkGlow1: rgba(255,120,200,.55);
+      --pinkGlow2: rgba(255,120,200,.45);
+      --ok: rgba(120,255,190,.95);
+      --bad: rgba(255,160,200,.95);
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      overflow:hidden;
+      background:#05060a;
+      color:var(--text);
+      font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial;
+    }
+
+    canvas{ position:fixed; inset:0; width:100%; height:100%; pointer-events:none; }
+    #matrix{opacity:.9; z-index:0}
+    #hearts{opacity:.65; mix-blend-mode:screen; z-index:2}
+    #fx{z-index:4}
+
+    .overlay{
+      position:fixed; inset:0;
+      background:
+        radial-gradient(1100px 700px at 50% 40%, rgba(255,255,255,.06), transparent 60%),
+        radial-gradient(1200px 900px at 50% 50%, transparent 40%, rgba(0,0,0,.62));
+      pointer-events:none;
+      z-index:1;
+    }
+
+    /* Countdown card */
+    .wrap{
+      position:relative;
+      height:100%;
+      display:grid;
+      place-items:center;
+      padding:22px;
+      z-index:3;
+    }
+    .card{
+      width:min(860px, 92vw);
+      border-radius:28px;
+      background: linear-gradient(180deg, rgba(255,255,255,.12), rgba(255,255,255,.06));
+      border: 1px solid rgba(255,255,255,.16);
+      box-shadow: var(--shadow);
+      backdrop-filter: blur(12px);
+      overflow:hidden;
+    }
+    .cardInner{ padding:28px 26px 22px; }
+
+    .badge{
+      display:inline-flex;
+      align-items:center;
+      gap:10px;
+      padding:10px 14px;
+      border-radius:999px;
+      background: rgba(0,0,0,.22);
+      border: 1px solid rgba(255,255,255,.14);
+      color: var(--muted);
+      font-weight:700;
+      font-size:14px;
+    }
+    .dotPulse{
+      width:10px;height:10px;border-radius:99px;
+      background: rgba(0,255,140,.95);
+      box-shadow: 0 0 22px rgba(0,255,140,.65);
+      animation: pulse 1.2s ease-in-out infinite;
+    }
+    @keyframes pulse{
+      0%,100%{ transform:scale(1); opacity:.7 }
+      50%{ transform:scale(1.6); opacity:1 }
+    }
+
+    h1{
+      margin:16px 0 6px;
+      font-size:clamp(28px, 4.8vw, 52px);
+      line-height:1.05;
+      letter-spacing:-.8px;
+      text-shadow: 0 14px 45px rgba(0,0,0,.45);
+    }
+    p{
+      margin:0;
+      color: var(--muted);
+      font-size:clamp(14px, 2.1vw, 18px);
+      line-height:1.55;
+    }
+
+    .countdown{
+      margin-top:18px;
+      display:grid;
+      grid-template-columns: repeat(4, minmax(0, 1fr));
+      gap:12px;
+    }
+    .tile{
+      padding:14px 12px;
+      border-radius:18px;
+      background: rgba(0,0,0,.22);
+      border: 1px solid rgba(255,255,255,.14);
+      text-align:center;
+    }
+    .num{
+      font-size:clamp(26px, 4.1vw, 42px);
+      font-weight:900;
+      letter-spacing:-.6px;
+    }
+    .lbl{
+      margin-top:4px;
+      font-size:12px;
+      color: rgba(255,255,255,.68);
+      text-transform:uppercase;
+      letter-spacing:1.6px;
+    }
+
+    .footer{
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      gap:12px;
+      margin-top:18px;
+      padding-top:14px;
+      border-top:1px solid rgba(255,255,255,.12);
+      color: rgba(255,255,255,.70);
+      font-size:13px;
+      flex-wrap:wrap;
+    }
+
+    .btnRow{display:flex; gap:10px; flex-wrap:wrap; justify-content:center;}
+    button{
+      appearance:none;
+      border:none;
+      background: rgba(0,0,0,.28);
+      color: var(--text);
+      padding:10px 14px;
+      border-radius:999px;
+      font-weight:900;
+      cursor:pointer;
+      border:1px solid rgba(255,255,255,.16);
+      transition: transform .08s ease, background .18s ease, box-shadow .18s ease;
+      letter-spacing:.2px;
+    }
+    button:hover{ background: rgba(0,0,0,.36); box-shadow:0 14px 40px rgba(0,0,0,.35); }
+    button:active{ transform: scale(.98); }
+    .primary{
+      background: rgba(255,120,200,.16);
+      border-color: rgba(255,120,200,.35);
+    }
+    .primary:hover{ background: rgba(255,120,200,.22); }
+    button:disabled{
+      opacity:.45;
+      cursor:not-allowed;
+      transform:none !important;
+      box-shadow:none !important;
+    }
+
+    /* Reveal screen */
+    .reveal{
+      position:fixed; inset:0;
+      display:grid;
+      place-items:center;
+      z-index:3;
+      opacity:0;
+      transform: scale(1.02);
+      pointer-events:none;
+      transition: opacity .6s ease, transform .8s ease;
+    }
+    .reveal.show{
+      opacity:1;
+      transform: scale(1);
+      pointer-events:auto;
+    }
+    .revealCard{
+      width:min(1020px, 94vw);
+      padding:28px 22px;
+      border-radius:32px;
+      background: rgba(0,0,0,.28);
+      border:1px solid rgba(255,255,255,.16);
+      box-shadow: 0 28px 90px rgba(0,0,0,.55);
+      backdrop-filter: blur(10px);
+      text-align:center;
+      position:relative;
+      overflow:hidden;
+    }
+    .title{
+      font-weight:1000;
+      font-size: clamp(42px, 8vw, 94px);
+      letter-spacing: .8px;
+      margin:10px 0 6px;
+      text-transform:uppercase;
+      color: var(--pink);
+      text-shadow:
+        0 0 14px var(--pinkGlow1),
+        0 0 42px var(--pinkGlow2),
+        0 18px 55px rgba(0,0,0,.55);
+      animation: popIn .85s cubic-bezier(.2,1.1,.2,1) both;
+    }
+    @keyframes popIn{
+      0%{ transform: translateY(14px) scale(.92); opacity:0 }
+      100%{ transform: translateY(0) scale(1); opacity:1 }
+    }
+    .glitch{ position:relative; display:inline-block; }
+    .glitch::before, .glitch::after{
+      content: attr(data-text);
+      position:absolute;
+      left:0; top:0;
+      width:100%;
+      overflow:hidden;
+      opacity:.85;
+      clip-path: inset(0 0 0 0);
+      mix-blend-mode: screen;
+    }
+    .glitch::before{
+      transform: translate(2px, 0);
+      color: rgba(255,120,200,.92);
+      animation: glitchTop 2.4s infinite linear;
+    }
+    .glitch::after{
+      transform: translate(-2px, 0);
+      color: rgba(255,170,220,.92);
+      animation: glitchBot 2.1s infinite linear;
+    }
+    @keyframes glitchTop{
+      0%{ clip-path: inset(0 0 85% 0); }
+      10%{ clip-path: inset(0 0 55% 0); }
+      20%{ clip-path: inset(0 0 78% 0); }
+      30%{ clip-path: inset(0 0 40% 0); }
+      40%{ clip-path: inset(0 0 90% 0); }
+      50%{ clip-path: inset(0 0 30% 0); }
+      60%{ clip-path: inset(0 0 75% 0); }
+      70%{ clip-path: inset(0 0 45% 0); }
+      80%{ clip-path: inset(0 0 88% 0); }
+      90%{ clip-path: inset(0 0 60% 0); }
+      100%{ clip-path: inset(0 0 85% 0); }
+    }
+    @keyframes glitchBot{
+      0%{ clip-path: inset(85% 0 0 0); }
+      10%{ clip-path: inset(60% 0 0 0); }
+      20%{ clip-path: inset(78% 0 0 0); }
+      30%{ clip-path: inset(45% 0 0 0); }
+      40%{ clip-path: inset(92% 0 0 0); }
+      50%{ clip-path: inset(40% 0 0 0); }
+      60%{ clip-path: inset(72% 0 0 0); }
+      70%{ clip-path: inset(55% 0 0 0); }
+      80%{ clip-path: inset(88% 0 0 0); }
+      90%{ clip-path: inset(62% 0 0 0); }
+      100%{ clip-path: inset(85% 0 0 0); }
+    }
+
+    .sub{
+      margin: 10px auto 0;
+      max-width: 70ch;
+      font-size: clamp(14px, 2.2vw, 20px);
+      color: rgba(255,255,255,.80);
+      line-height:1.55;
+    }
+    .chips{
+      margin-top:14px;
+      display:flex; gap:10px; justify-content:center; flex-wrap:wrap;
+      color: rgba(255,255,255,.72); font-size:13px;
+    }
+    .chip{
+      padding:10px 12px;
+      border-radius:999px;
+      background: rgba(0,0,0,.22);
+      border:1px solid rgba(255,255,255,.14);
+    }
+
+    /* DEV BOOT OVERLAY */
+    .devOverlay{
+      position:fixed;
+      inset:0;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      z-index:9;
+      background: radial-gradient(900px 600px at 50% 25%, rgba(0,255,180,.12), transparent 65%),
+                  rgba(6,8,16,.72);
+      backdrop-filter: blur(10px);
+      transition: opacity 700ms ease, transform 700ms ease;
+    }
+    .devOverlay.hidden{
+      opacity:0;
+      transform: translateY(6px) scale(1.01);
+      pointer-events:none;
+    }
+    .devCard{
+      width:min(820px, 92vw);
+      border-radius: 22px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.12);
+      box-shadow: 0 22px 75px rgba(0,0,0,.55);
+      overflow:hidden;
+      position:relative;
+    }
+    .devCard::before{
+      content:"";
+      position:absolute;
+      inset:-40%;
+      background: radial-gradient(circle at 30% 30%, rgba(255,107,158,.16), transparent 45%),
+                  radial-gradient(circle at 70% 60%, rgba(0,255,180,.12), transparent 55%),
+                  radial-gradient(circle at 50% 90%, rgba(120,160,255,.10), transparent 60%);
+      filter: blur(20px);
+      animation: devGlow 6s ease-in-out infinite;
+    }
+    @keyframes devGlow{
+      0%,100%{ transform: translate(0,0) rotate(0deg); opacity:.85; }
+      50%{ transform: translate(20px,-10px) rotate(8deg); opacity:1; }
+    }
+    .devTop{
+      position:relative;
+      z-index:1;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding: 14px 16px;
+      background: rgba(0,0,0,.25);
+      border-bottom: 1px solid rgba(255,255,255,.10);
+    }
+    .dot{ width:10px; height:10px; border-radius:99px; opacity:.95; }
+    .dot.red{ background:#ff5f57; }
+    .dot.yellow{ background:#febc2e; }
+    .dot.green{ background:#28c840; }
+    .devTitle{
+      margin-left:8px;
+      font-weight:800;
+      letter-spacing:.2px;
+      opacity:.9;
+      font-size:13px;
+    }
+    .terminal{
+      position:relative;
+      z-index:1;
+      margin:0;
+      padding: 16px 16px 12px;
+      min-height: 220px;
+      max-height: 320px;
+      overflow:auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 13px;
+      line-height: 1.55;
+      color: rgba(235,245,255,.95);
+      white-space: pre-wrap;
+    }
+    .progressWrap{
+      position:relative;
+      z-index:1;
+      display:flex;
+      align-items:center;
+      gap:10px;
+      padding: 0 16px 14px;
+    }
+    .progressBar{
+      flex:1;
+      height: 12px;
+      border-radius: 999px;
+      background: rgba(255,255,255,.10);
+      border: 1px solid rgba(255,255,255,.14);
+      overflow:hidden;
+    }
+    .progressFill{
+      height:100%;
+      width:0%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, rgba(0,255,180,.85), rgba(255,107,158,.85));
+      transition: width 120ms ease;
+    }
+    .progressText{
+      font-size: 12px;
+      opacity:.85;
+      min-width: 40px;
+      text-align:right;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    }
+    .devHint{
+      position:relative;
+      z-index:1;
+      padding: 0 16px 16px;
+      font-size: 12px;
+      opacity:.75;
+    }
+
+    /* EXPLOSIONS + QR */
+    .explosionScreen{
+      position:fixed; inset:0;
+      z-index:8;
+      display:grid;
+      place-items:center;
+      background: radial-gradient(800px 600px at 50% 40%, rgba(255,120,200,.18), transparent 60%),
+                  radial-gradient(900px 600px at 20% 70%, rgba(0,255,140,.14), transparent 60%),
+                  rgba(0,0,0,.35);
+      backdrop-filter: blur(6px);
+      opacity:0;
+      pointer-events:none;
+      transition: opacity .45s ease;
+    }
+    .explosionScreen.show{ opacity:1; pointer-events:auto; }
+    .boomText{
+      text-align:center;
+      padding: 18px 18px;
+      border-radius: 28px;
+      background: rgba(0,0,0,.24);
+      border:1px solid rgba(255,255,255,.14);
+      box-shadow: 0 22px 80px rgba(0,0,0,.55);
+      width:min(980px, 92vw);
+    }
+    .boomTitle{
+      font-size: clamp(34px, 6.5vw, 78px);
+      font-weight:1000;
+      letter-spacing:.6px;
+      color: var(--pink);
+      text-shadow: 0 0 18px var(--pinkGlow1), 0 0 50px var(--pinkGlow2);
+      margin:0 0 6px;
+      animation: boomPulse 1.1s ease-in-out infinite alternate;
+    }
+    @keyframes boomPulse{ 0%{ transform:scale(1); } 100%{ transform:scale(1.03); } }
+    .boomSub{
+      margin:0;
+      color: rgba(255,255,255,.82);
+      font-size: clamp(14px, 2.2vw, 18px);
+      line-height:1.5;
+    }
+
+    .challengeRow{
+      margin-top:14px;
+      display:grid;
+      grid-template-columns: 260px 1fr;
+      gap:12px;
+      align-items:stretch;
+      text-align:left;
+    }
+    .qrBox, .challengeBox{
+      border-radius:22px;
+      background: rgba(0,0,0,.22);
+      border:1px solid rgba(255,255,255,.14);
+      padding:12px;
+    }
+    .qrTitle{
+      font-weight:900;
+      letter-spacing:.3px;
+      opacity:.9;
+      margin-bottom:8px;
+      text-align:center;
+    }
+    #qr{
+      display:grid;
+      place-items:center;
+      padding:10px;
+      border-radius:18px;
+      background: rgba(255,255,255,.92);
+    }
+    .qrHint{
+      margin-top:8px;
+      font-size:12px;
+      opacity:.8;
+      text-align:center;
+    }
+    .challengeTitle{
+      font-weight:1000;
+      margin-bottom:6px;
+      text-align:center;
+    }
+    .challengeText{
+      opacity:.85;
+      font-size:14px;
+      margin-bottom:10px;
+      text-align:center;
+    }
+    .challengeInputRow{
+      display:flex;
+      gap:10px;
+      align-items:center;
+    }
+    .codeInput{
+      flex:1;
+      padding:12px 14px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.16);
+      background: rgba(255,255,255,.06);
+      color: rgba(255,255,255,.92);
+      outline:none;
+      font-weight:800;
+    }
+    .codeInput:focus{
+      border-color: rgba(255,120,200,.45);
+      box-shadow: 0 0 0 4px rgba(255,120,200,.15);
+    }
+    .challengeMsg{
+      margin-top:10px;
+      min-height:18px;
+      font-size:13px;
+      opacity:.9;
+      text-align:center;
+    }
+    .challengeSmall{
+      margin-top:6px;
+      font-size:12px;
+      opacity:.72;
+      text-align:center;
+    }
+
+    /* LOVE DEBUG MODE */
+    .debugScreen{
+      position:fixed; inset:0;
+      z-index:11;
+      display:grid;
+      place-items:center;
+      background:
+        radial-gradient(900px 650px at 50% 25%, rgba(0,255,140,.12), transparent 62%),
+        radial-gradient(900px 650px at 50% 45%, rgba(255,120,200,.18), transparent 62%),
+        rgba(0,0,0,.55);
+      backdrop-filter: blur(12px);
+      opacity:0;
+      pointer-events:none;
+      transition: opacity .45s ease;
+    }
+    .debugScreen.show{ opacity:1; pointer-events:auto; }
+
+    .debugCard{
+      width:min(980px, 92vw);
+      border-radius: 28px;
+      background: rgba(0,0,0,.30);
+      border:1px solid rgba(255,255,255,.16);
+      box-shadow: 0 28px 90px rgba(0,0,0,.62);
+      overflow:hidden;
+    }
+    .debugTop{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding: 14px 16px;
+      background: rgba(0,0,0,.30);
+      border-bottom: 1px solid rgba(255,255,255,.12);
+      gap:12px;
+      flex-wrap:wrap;
+    }
+    .debugTitle{
+      font-weight:1000;
+      letter-spacing:.3px;
+      color: rgba(255,255,255,.92);
+    }
+    .debugPill{
+      padding:8px 12px;
+      border-radius:999px;
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.12);
+      color: rgba(255,255,255,.78);
+      font-size:12px;
+      font-weight:900;
+      display:flex;
+      gap:10px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+    .debugBody{
+      display:grid;
+      grid-template-columns: 1.1fr .9fr;
+      gap:12px;
+      padding: 14px;
+    }
+    .debugPanel{
+      border-radius: 22px;
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.12);
+      padding: 12px;
+    }
+    .debugLog{
+      margin:0;
+      min-height: 190px;
+      max-height: 320px;
+      overflow:auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 13px;
+      line-height:1.55;
+      color: rgba(235,245,255,.95);
+      white-space: pre-wrap;
+    }
+
+    /* Gate (3 steps) */
+    .gate{
+      margin-top:10px;
+      border-radius:18px;
+      background: rgba(0,0,0,.22);
+      border:1px solid rgba(255,255,255,.14);
+      padding:10px;
+    }
+    .gateTitle{
+      font-weight:1000;
+      text-align:center;
+      margin:0 0 6px;
+    }
+    .gateSteps{
+      display:flex;
+      gap:8px;
+      justify-content:center;
+      flex-wrap:wrap;
+      margin-bottom:8px;
+      font-size:12px;
+      opacity:.85;
+    }
+    .stepPill{
+      padding:7px 10px;
+      border-radius:999px;
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.12);
+      font-weight:900;
+    }
+    .stepPill.ok{
+      border-color: rgba(0,255,140,.35);
+      background: rgba(0,255,140,.10);
+      color: rgba(220,255,240,.95);
+    }
+    .gatePrompt{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+      font-size: 12.5px;
+      color: rgba(235,245,255,.95);
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.10);
+      padding:10px;
+      border-radius:14px;
+      white-space: pre-wrap;
+    }
+    .gateRow{
+      display:flex;
+      gap:10px;
+      margin-top:10px;
+      align-items:center;
+    }
+    .gateInput{
+      flex:1;
+      padding:12px 14px;
+      border-radius:999px;
+      border:1px solid rgba(255,255,255,.16);
+      background: rgba(255,255,255,.06);
+      color: rgba(255,255,255,.92);
+      outline:none;
+      font-weight:900;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", monospace;
+    }
+    .gateInput:focus{
+      border-color: rgba(255,120,200,.45);
+      box-shadow: 0 0 0 4px rgba(255,120,200,.15);
+    }
+    .gateMsg{
+      margin-top:8px;
+      min-height:18px;
+      text-align:center;
+      font-size:13px;
+      opacity:.92;
+    }
+
+    .bugListTitle{
+      font-weight:1000;
+      margin:0 0 8px;
+      opacity:.92;
+      text-align:center;
+    }
+    .bugItem{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding:10px;
+      border-radius: 18px;
+      background: rgba(0,0,0,.22);
+      border:1px solid rgba(255,255,255,.12);
+      margin-bottom:10px;
+    }
+    .bugLeft{
+      display:flex;
+      align-items:center;
+      gap:10px;
+      min-width:0;
+    }
+    .bugStatus{
+      width:10px; height:10px; border-radius: 99px;
+      background: rgba(255,120,200,.95);
+      box-shadow: 0 0 18px rgba(255,120,200,.45);
+      flex: 0 0 auto;
+    }
+    .bugStatus.ok{
+      background: rgba(0,255,140,.95);
+      box-shadow: 0 0 18px rgba(0,255,140,.45);
+    }
+    .bugText{
+      font-weight:900;
+      font-size:13px;
+      color: rgba(255,255,255,.86);
+      overflow:hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .debugFooter{
+      display:flex;
+      justify-content:center;
+      gap:10px;
+      flex-wrap:wrap;
+      padding: 0 14px 14px;
+    }
+
+    /* MESSAGE SCREEN */
+    .messageScreen{
+      position:fixed; inset:0;
+      z-index:12;
+      display:grid;
+      place-items:center;
+      background: radial-gradient(850px 650px at 50% 35%, rgba(255,120,200,.18), transparent 62%),
+                  rgba(0,0,0,.52);
+      backdrop-filter: blur(10px);
+      opacity:0;
+      pointer-events:none;
+      transition: opacity .45s ease;
+    }
+    .messageScreen.show{ opacity:1; pointer-events:auto; }
+
+    /* ✅ Fix #1: keep footer buttons visible (card is a column; body scrolls) */
+    .msgCard{
+      width:min(920px, 92vw);
+      height: min(78vh, 720px);
+      border-radius: 32px;
+      background: rgba(0,0,0,.30);
+      border:1px solid rgba(255,255,255,.16);
+      box-shadow: 0 28px 90px rgba(0,0,0,.60);
+      padding: 18px 18px;
+      position:relative;
+      overflow:hidden;
+
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      text-align:center;
+    }
+
+    .msgTitle{
+      margin:4px 0 0;
+      font-size: clamp(26px, 5.2vw, 54px);
+      font-weight:1000;
+      color: rgba(255,255,255,.96);
+      text-shadow: 0 0 14px rgba(255,120,200,.18);
+      z-index:3;
+    }
+
+    .msgBody{
+      width:100%;
+      max-width: 75ch;
+      margin: 0 auto;
+      text-align:left;
+      padding: 14px 14px;
+      border-radius: 20px;
+      background: rgba(255,255,255,.06);
+      border:1px solid rgba(255,255,255,.12);
+      color: rgba(255,255,255,.92);
+      font-size: clamp(14px, 2.2vw, 19px);
+      line-height:1.65;
+      white-space: pre-wrap;
+
+      flex: 1 1 auto;
+      min-height: 0;        /* important so overflow works */
+      overflow:auto;        /* scroll inside box */
+      z-index:3;
+    }
+
+    .msgFooter{
+      display:flex;
+      justify-content:center;
+      gap:10px;
+      flex-wrap:wrap;
+      z-index:3;
+    }
+
+    /* ✅ Fix #2: remove fancy border effect, keep ONLY floating emojis */
+    #msgFloatLayer{
+      position:absolute;
+      inset:0;
+      pointer-events:none;
+      z-index:5;
+      overflow:hidden;
+    }
+    .floatEmoji{
+      position:absolute;
+      left:0; top:0;
+      opacity: 0;
+      transform: translate(-50%, 0) scale(.95);
+      animation: floatUp 3.2s ease-out forwards;
+      user-select:none;
+      will-change: transform, opacity;
+      filter: drop-shadow(0 10px 18px rgba(0,0,0,.35));
+    }
+    @keyframes floatUp{
+      0%{ opacity:0; transform: translate(-50%, 18px) scale(.9); }
+      12%{ opacity:1; }
+      100%{ opacity:0; transform: translate(-50%, -220px) scale(1.08); }
+    }
+
+    @media (max-width:900px){
+      .debugBody{ grid-template-columns: 1fr; }
+    }
+    @media (max-width:800px){
+      .challengeRow{ grid-template-columns: 1fr; }
+    }
+    @media (max-width:520px){
+      .countdown{ grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .gateRow{ flex-direction:column; }
+      .gateInput{ width:100%; }
+      .msgCard{ height: min(82vh, 720px); }
+    }
+  </style>
+</head>
+
+<body>
+  <canvas id="matrix"></canvas>
+  <canvas id="hearts"></canvas>
+  <canvas id="fx"></canvas>
+  <div class="overlay"></div>
+
+  <!-- Countdown -->
+  <div class="wrap" id="countdownWrap">
+    <div class="card">
+      <div class="cardInner">
+        <div class="badge">
+          <span class="dotPulse"></span>
+          <span id="badgeText">Counting down to Douae’s birthday…</span>
+        </div>
+
+        <h1>Incoming celebration 🎂</h1>
+        <p>At zero: pink reveal → dev boot → surprise → QR → LOVE DEBUG MODE (3 challenges) → message 💌</p>
+
+        <div class="countdown" aria-label="Countdown">
+          <div class="tile"><div class="num" id="d">0</div><div class="lbl">Days</div></div>
+          <div class="tile"><div class="num" id="h">00</div><div class="lbl">Hours</div></div>
+          <div class="tile"><div class="num" id="m">00</div><div class="lbl">Minutes</div></div>
+          <div class="tile"><div class="num" id="s">00</div><div class="lbl">Seconds</div></div>
+        </div>
+
+        <div class="footer">
+          <div>Tip: edit <b>BIRTHDAY_DATE</b> in the code.</div>
+          <div class="btnRow">
+            <button id="testBtn" class="primary" type="button">Test Full Flow</button>
+            <button id="burstBtn" type="button">Heart Burst</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Reveal -->
+  <div class="reveal" id="reveal">
+    <div class="revealCard">
+      <div class="title">
+        <span class="glitch" id="glitch" data-text="HAPPY BIRTHDAY DOUAE">HAPPY BIRTHDAY DOUAE</span>
+      </div>
+
+      <div class="sub" id="subText">
+        Developer edition: pink glow, matrix vibes, and a tiny quest before the final message. 💖
+      </div>
+
+      <div class="chips">
+        <div class="chip">✔ build: happiness</div>
+        <div class="chip">✔ deploy: smiles</div>
+        <div class="chip">✔ uptime: always</div>
+      </div>
+
+      <div class="btnRow" style="margin-top:16px;">
+        <button id="launchBtn" class="primary" type="button">LAUNCH SURPRISE 🚀</button>
+        <button id="backBtn" type="button">Back</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- DEV BOOT SCREEN -->
+  <div class="devOverlay hidden" id="devOverlay">
+    <div class="devCard">
+      <div class="devTop">
+        <div class="dot red"></div><div class="dot yellow"></div><div class="dot green"></div>
+        <div class="devTitle">birthday.exe</div>
+      </div>
+
+      <pre class="terminal" id="terminal"></pre>
+
+      <div class="progressWrap">
+        <div class="progressBar"><div class="progressFill" id="progressFill"></div></div>
+        <div class="progressText" id="progressText">0%</div>
+      </div>
+
+      <div class="devHint">Press <b>Enter</b> to skip ✨</div>
+    </div>
+  </div>
+
+  <!-- EXPLOSIONS + QR -->
+  <div class="explosionScreen" id="explosionScreen">
+    <div class="boomText">
+      <h2 class="boomTitle">BOOM! 💥💖</h2>
+      <p class="boomSub">
+        Mission unlocked 😄<br/>
+        Scan the QR code to get the <b>secret code</b> — then type it to unlock LOVE DEBUG MODE 🧠💗
+      </p>
+
+      <div class="challengeRow">
+        <div class="qrBox">
+          <div class="qrTitle">SCAN ME ✅</div>
+          <div id="qr"></div>
+          <div class="qrHint">Hint: it reveals a short code</div>
+        </div>
+
+        <div class="challengeBox">
+          <div class="challengeTitle">Challenge</div>
+          <div class="challengeText">Enter the secret code to unlock 💗</div>
+
+          <div class="challengeInputRow">
+            <input id="codeInput" class="codeInput" placeholder="Enter code…" autocomplete="off" />
+            <button id="checkCodeBtn" class="primary" type="button">Unlock</button>
+          </div>
+
+          <div id="challengeMsg" class="challengeMsg"></div>
+          <div class="challengeSmall">Tip: Press Enter to submit</div>
+        </div>
+      </div>
+
+      <div class="btnRow" style="margin-top:14px;">
+        <button id="explodeMoreBtn" class="primary" type="button">MORE EXPLOSIONS 💥</button>
+        <button id="goDebugBtn" type="button" disabled>ENTER LOVE DEBUG MODE 🔒</button>
+        <button id="closeExplosionBtn" type="button">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- LOVE DEBUG MODE -->
+  <div class="debugScreen" id="debugScreen">
+    <div class="debugCard">
+      <div class="debugTop">
+        <div class="debugTitle">LOVE DEBUG MODE 🧠💗 — target: <span style="color:rgba(0,255,140,.95)">douae</span></div>
+        <div class="debugPill" id="debugProgressPill">
+          <span id="fixStatus">Status: 0/4 fixed</span>
+          <span id="gateStatus">Gate: 0/3 solved</span>
+        </div>
+      </div>
+
+      <div class="debugBody">
+        <div class="debugPanel">
+          <pre class="debugLog" id="debugLog"></pre>
+
+          <div class="gate" id="gate">
+            <div class="gateTitle">Unlock Gate (3 Challenges)</div>
+
+            <div class="gateSteps">
+              <div class="stepPill" id="step0">1) Python Easy</div>
+              <div class="stepPill" id="step1">2) Python Harder</div>
+              <div class="stepPill" id="step2">3) About Imad</div>
+            </div>
+
+            <div class="gatePrompt" id="gatePrompt"></div>
+
+            <div class="gateRow">
+              <input class="gateInput" id="gateInput" placeholder="Type the output / answer here…" autocomplete="off" />
+              <button class="primary" id="gateCheckBtn" type="button">Check</button>
+              <button id="gateHintBtn" type="button">Hint</button>
+            </div>
+
+            <div class="gateMsg" id="gateMsg"></div>
+          </div>
+        </div>
+
+        <div class="debugPanel">
+          <div class="bugListTitle">Fix these bugs 🐛</div>
+
+          <div class="bugItem">
+            <div class="bugLeft">
+              <div class="bugStatus" id="bug0"></div>
+              <div class="bugText">HeartOverflowException (missing hugs)</div>
+            </div>
+            <button id="fix0" class="primary" type="button">FIX BUG</button>
+          </div>
+
+          <div class="bugItem">
+            <div class="bugLeft">
+              <div class="bugStatus" id="bug1"></div>
+              <div class="bugText">SmileBufferUnderflow (needs you)</div>
+            </div>
+            <button id="fix1" class="primary" type="button">FIX BUG</button>
+          </div>
+
+          <div class="bugItem">
+            <div class="bugLeft">
+              <div class="bugStatus" id="bug2"></div>
+              <div class="bugText">GratitudeNotSet (set gratitude = True)</div>
+            </div>
+            <button id="fix2" class="primary" type="button" disabled>LOCKED</button>
+          </div>
+
+          <div class="bugItem" style="margin-bottom:0;">
+            <div class="bugLeft">
+              <div class="bugStatus" id="bug3"></div>
+              <div class="bugText">MissingKissesDependency (pip install kisses)</div>
+            </div>
+            <button id="fix3" class="primary" type="button" disabled>LOCKED</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="debugFooter">
+        <button id="deployBtn" class="primary" type="button" disabled>DEPLOY MESSAGE 🔒</button>
+        <button id="closeDebugBtn" type="button">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- MESSAGE SCREEN -->
+  <div class="messageScreen" id="messageScreen">
+    <div class="msgCard">
+      <div id="msgFloatLayer"></div>
+      <div class="msgTitle">For you, Douae 💗</div>
+      <div class="msgBody" id="msgBody"></div>
+      <div class="msgFooter">
+        <button id="replayMsgBtn" class="primary" type="button">Replay Typing ✨</button>
+        <button id="closeMsgBtn" type="button">Close</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    /**********************
+     * CONFIG (EDIT HERE)
+     **********************/
+    const GIRL_NAME = "Douae";
+    const BIRTHDAY_DATE = "2026-01-12T00:00:00"; // <-- CHANGE THIS
+    const SECRET_CODE = "DOUAE-DEV-18";          // keep the answer the same ✅
+    const QR_PAYLOAD =
+  "Julius liked simple secrets: move each letter 3 steps back in the alphabet\n" +" (D->A, E->B...). \n"+
+  "Don't change numbers.\n"+" GRXDH-GHY-18 -> ?";
+
+
+
+    // Your birthday (for the personal question), as you said:
+    const IMAD_BDAY_DAY = 3;
+    const IMAD_BDAY_MONTH = 5;
+
+    // Message (no ASCII cat block)
+    const YOUR_MESSAGE =
+`Hey ${GIRL_NAME} 🌸
+
+Happy Birthday 🎂✨
+
+I hope this year brings you calm mornings, strong confidence, and the kind of happiness that stays with you — not for a minute, but for the whole day.
+You’re someone who keeps growing, learning, and winning… even when life tries to throw “bugs” at you.
+
+I really admire your mind, your discipline, and how you keep showing up for your goals.
+And I hope you never forget this:
+you don’t need to prove anything to be valuable — you already are.
+
+May your days be full of small good surprises, proud moments, and peace in your heart.
+And when you feel tired, I hope you remember you’re not alone — you have people who believe in you.
+
+Today is your day.
+So celebrate like it’s a launch, laugh like it’s a requirement, and rest like it’s part of the plan ✅
+
+Also… I hope at least one cute cat appears in your day and blesses you with a tiny “meow of luck” 🐱💗
+
+Happy Birthday again, Douae 💗
+— Imad`;
+
+    /**********************
+     * Helpers
+     **********************/
+    const el = (id) => document.getElementById(id);
+    const pad2 = (n) => String(n).padStart(2, "0");
+    const rand = (a,b)=>Math.random()*(b-a)+a;
+    const sleep = (ms)=>new Promise(r=>setTimeout(r, ms));
+
+    /**********************
+     * DOM refs (declare ONCE)
+     **********************/
+    const countdownWrap = el("countdownWrap");
+    const reveal = el("reveal");
+    const badgeText = el("badgeText");
+
+    const devOverlay = el("devOverlay");
+    const terminalEl = el("terminal");
+    const progressFill = el("progressFill");
+    const progressText = el("progressText");
+
+    const explosionScreen = el("explosionScreen");
+    const debugScreen = el("debugScreen");
+    const messageScreen = el("messageScreen");
+
+    const qrEl = el("qr");
+    const codeInput = el("codeInput");
+    const checkCodeBtn = el("checkCodeBtn");
+    const challengeMsg = el("challengeMsg");
+    const goDebugBtn = el("goDebugBtn");
+
+    const debugLog = el("debugLog");
+    const fixStatusEl = el("fixStatus");
+    const gateStatusEl = el("gateStatus");
+    const deployBtn = el("deployBtn");
+
+    const stepEls = [el("step0"), el("step1"), el("step2")];
+    const gatePrompt = el("gatePrompt");
+    const gateInput = el("gateInput");
+    const gateCheckBtn = el("gateCheckBtn");
+    const gateHintBtn = el("gateHintBtn");
+    const gateMsg = el("gateMsg");
+
+    const bugEls = [el("bug0"), el("bug1"), el("bug2"), el("bug3")];
+    const fixBtns = [el("fix0"), el("fix1"), el("fix2"), el("fix3")];
+
+    const msgBody = el("msgBody");
+    const msgFloatLayer = el("msgFloatLayer");
+
+    /**********************
+     * State
+     **********************/
+    let revealed = false;
+    let devStarted = false;
+    let devRunning = false;
+    let skipDev = false;
+
+    let unlocked = false;
+    let typingToken = 0;
+
+    let msgFxTimer = null;
+
+    const bugs = [
+      { ok:false, label:"Applying patch: hugs++", extra:"✓ HeartOverflowException resolved" },
+      { ok:false, label:"Refilling buffer: smiles += 999", extra:"✓ SmileBufferUnderflow resolved" },
+      { ok:false, label:"Initializing: gratitude = True", extra:"✓ GratitudeNotSet resolved" },
+      { ok:false, label:"Installing dependency: pip install kisses", extra:"✓ MissingKissesDependency resolved" }
+    ];
+
+    const gateChallenges = [
+      {
+        kind: "python",
+        title: "Python Easy",
+        prompt:
+`# Python Output (Easy)
+print(len("Douae"))`,
+        answer: "5",
+        hint: "Count the letters in the string."
+      },
+      {
+        kind: "python",
+        title: "Python Harder",
+        prompt:
+`# Python Output (Harder)
+name = "Douae"
+print(name[::-1].upper())`,
+        answer: "EAUOD",
+        hint: "Reverse then uppercase."
+      },
+      {
+        kind: "about",
+        title: "About Imad",
+        prompt:
+`# About Imad (personal check)
+What is Imad's birth DAY and MONTH?
+
+Format: DD/MM`,
+        answer: `${String(IMAD_BDAY_DAY).padStart(2,"0")}/${String(IMAD_BDAY_MONTH).padStart(2,"0")}`,
+        hint: "Use the format DD/MM."
+      }
+    ];
+
+    let gateIndex = 0;
+    const gateSolved = [false,false,false];
+
+    /**********************
+     * Countdown -> Reveal
+     **********************/
+    function getTargetDate(){
+      const t = new Date(BIRTHDAY_DATE);
+      return isNaN(t.getTime()) ? null : t;
+    }
+
+    function updateCountdown(){
+      if (revealed) return;
+
+      const target = getTargetDate();
+      if (!target){
+        badgeText.textContent = "Invalid date — set BIRTHDAY_DATE ✍️";
+        return;
+      }
+
+      const now = new Date();
+      const diff = target.getTime() - now.getTime();
+
+      if (diff <= 0){
+        doReveal();
+        return;
+      }
+
+      const sec = Math.floor(diff / 1000);
+      el("d").textContent = Math.floor(sec / 86400);
+      el("h").textContent = pad2(Math.floor((sec % 86400) / 3600));
+      el("m").textContent = pad2(Math.floor((sec % 3600) / 60));
+      el("s").textContent = pad2(sec % 60);
+    }
+
+    async function doReveal(){
+      if (revealed) return;
+      revealed = true;
+
+      countdownWrap.style.display = "none";
+      reveal.classList.add("show");
+
+      matrixState.boost = 1.55;
+      burstHearts(120);
+
+      if (!devStarted){
+        devStarted = true;
+        await sleep(800);
+        showDevOverlay();
+        await runDevBoot();
+      }
+    }
+
+    function resetAll(){
+      revealed = false;
+      devStarted = false;
+      reveal.classList.remove("show");
+      countdownWrap.style.display = "grid";
+      devOverlay.classList.add("hidden");
+      hideExplosion();
+      hideDebug();
+      hideMessage();
+      resetDebugState();
+      matrixState.boost = 1.0;
+      burstHearts(30);
+      updateCountdown();
+    }
+
+    /**********************
+     * Screens show/hide
+     **********************/
+    function showExplosion(){
+      explosionScreen.classList.add("show");
+      matrixState.boost = 1.9;
+
+      unlocked = false;
+      goDebugBtn.disabled = true;
+      goDebugBtn.textContent = "ENTER LOVE DEBUG MODE 🔒";
+      codeInput.value = "";
+      challengeMsg.textContent = "";
+      setupQR();
+    }
+    function hideExplosion(){
+      explosionScreen.classList.remove("show");
+      matrixState.boost = revealed ? 1.55 : 1.0;
+    }
+
+    function showDebug(){
+      debugScreen.classList.add("show");
+      matrixState.boost = 1.55;
+      sparkle(70);
+      burstHearts(60);
+      startDebugIntro();
+      gateInput.focus();
+    }
+    function hideDebug(){
+      debugScreen.classList.remove("show");
+      matrixState.boost = revealed ? 1.55 : 1.0;
+    }
+
+    function showMessage(){
+      messageScreen.classList.add("show");
+      matrixState.boost = 1.35;
+      megaExplosion(0.45);
+      burstHearts(60);
+      startMessageFX();          // ✅ hearts + cats floating
+      typeMessage(YOUR_MESSAGE);
+    }
+    function hideMessage(){
+      messageScreen.classList.remove("show");
+      stopMessageFX();
+      matrixState.boost = revealed ? 1.55 : 1.0;
+    }
+
+    /**********************
+     * Message typing + floating emojis (hearts + cats)
+     **********************/
+    async function typeMessage(text){
+      typingToken++;
+      const token = typingToken;
+
+      msgBody.textContent = "";
+      const chars = Array.from(text);
+
+      for (let i = 0; i < chars.length; i++){
+        if (token !== typingToken) return;
+        msgBody.textContent += chars[i];
+
+        if (i % 26 === 0){
+          const x = innerWidth/2 + rand(-220,220);
+          const y = innerHeight/2 + rand(-140,140);
+          sparkle(10, x, y);
+          burstHearts(8, x, y);
+        }
+        await sleep(10 + Math.random()*20);
+      }
+
+      sparkle(70);
+      burstHearts(60);
+    }
+
+    function startMessageFX(){
+      stopMessageFX();
+      const emojis = ["💗","💕","💖","💞","🐱","😺","🐈","🐾"];
+
+      msgFxTimer = setInterval(() => {
+        if (!messageScreen.classList.contains("show")) return;
+
+        const span = document.createElement("span");
+        span.className = "floatEmoji";
+        span.textContent = emojis[Math.floor(Math.random() * emojis.length)];
+
+        const x = rand(60, innerWidth - 60);
+        const y = rand(innerHeight * 0.62, innerHeight * 0.88);
+
+        span.style.left = x + "px";
+        span.style.top  = y + "px";
+        span.style.fontSize = (Math.random() * 18 + 18).toFixed(0) + "px";
+
+        msgFloatLayer.appendChild(span);
+
+        // light, cute background effects
+        burstHearts(6, x, y);
+        sparkle(8, x, y);
+
+        setTimeout(() => span.remove(), 3300);
+      }, 260);
+    }
+
+    function stopMessageFX(){
+      if (msgFxTimer) clearInterval(msgFxTimer);
+      msgFxTimer = null;
+      msgFloatLayer.innerHTML = "";
+    }
+
+    /**********************
+     * Dev boot
+     **********************/
+    function showDevOverlay(){
+      devOverlay.classList.remove("hidden");
+      sparkle(80);
+      burstHearts(60, innerWidth/2, innerHeight*0.25);
+    }
+
+    async function typeLine(text, speed=18){
+      for (let i = 0; i < text.length; i++){
+        terminalEl.textContent += text[i];
+        terminalEl.scrollTop = terminalEl.scrollHeight;
+        await sleep(speed + Math.random()*20);
+      }
+      terminalEl.textContent += "\n";
+      terminalEl.scrollTop = terminalEl.scrollHeight;
+    }
+
+    async function runDevBoot(){
+      devRunning = true;
+      skipDev = false;
+
+      terminalEl.textContent = "";
+      const setPct = (p) => {
+        const pct = Math.max(0, Math.min(100, p));
+        progressFill.style.width = pct + "%";
+        progressText.textContent = pct + "%";
+      };
+      setPct(0);
+
+      const lines = [
+        `> booting birthday.exe --target "${GIRL_NAME}"`,
+        `> detecting profile...`,
+        `✓ role: Developer`,
+        `✓ version: 18.0.0`,
+        ``,
+        `> building surprise bundle...`,
+        `> compiling good vibes...`,
+        `> running tests: kindness.spec ✅`,
+        `> deploying: smiles@${GIRL_NAME} ✅`,
+        ``,
+        `Ready. Launching surprise UI...`
+      ];
+
+      for (let i=0; i<lines.length; i++){
+        if (skipDev) break;
+        await typeLine(lines[i], i < 2 ? 14 : 12);
+        setPct(Math.round(((i+1)/lines.length)*100));
+        if (i === 0 || i === 4 || i === lines.length-1){
+          sparkle(70);
+          burstHearts(50, innerWidth/2, innerHeight*0.22);
+        }
+        await sleep(120);
+      }
+
+      if (!skipDev) await sleep(350);
+      devOverlay.classList.add("hidden");
+
+      sparkle(80);
+      burstHearts(60, innerWidth/2, innerHeight*0.22);
+
+      devRunning = false;
+    }
+
+    window.addEventListener("keydown", (e) => {
+      if (e.key === "Enter" && devRunning){
+        skipDev = true;
+        devOverlay.classList.add("hidden");
+        devRunning = false;
+      }
+    });
+
+    /**********************
+     * QR Unlock
+     **********************/
+    function setupQR(){
+      qrEl.innerHTML = "";
+      try{
+        new QRCode(qrEl, { text: QR_PAYLOAD, width: 180, height: 180, correctLevel: QRCode.CorrectLevel.M });
+      } catch (e){
+        qrEl.innerHTML = "<div style='padding:10px;font-weight:900;color:#111'>QR lib failed 😅</div>";
+      }
+    }
+
+    function setChallengeMessage(text, ok=false){
+      challengeMsg.textContent = text;
+      challengeMsg.style.color = ok ? "var(--ok)" : "var(--bad)";
+    }
+
+    const normalizeCode = (s) => (s || "").trim().toUpperCase();
+
+    function tryUnlock(){
+      const entered = normalizeCode(codeInput.value);
+      const target = normalizeCode(SECRET_CODE);
+
+      if (entered === target){
+        unlocked = true;
+        goDebugBtn.disabled = false;
+        goDebugBtn.textContent = "ENTER LOVE DEBUG MODE 🧠💗";
+        setChallengeMessage("Unlocked ✅ Next: Love Debug Mode 💗", true);
+
+        sparkle(70);
+        burstHearts(60);
+        megaExplosion(0.55);
+      } else {
+        setChallengeMessage("Wrong code ❌ Try again 😄");
+        sparkle(18);
+      }
+    }
+
+    /**********************
+     * Love Debug Mode: gate (3 challenges) + 4 bug fixes
+     **********************/
+    async function logLine(text, speed=12){
+      for (let i=0;i<text.length;i++){
+        debugLog.textContent += text[i];
+        debugLog.scrollTop = debugLog.scrollHeight;
+        await sleep(speed + Math.random()*14);
+      }
+      debugLog.textContent += "\n";
+      debugLog.scrollTop = debugLog.scrollHeight;
+    }
+
+    async function startDebugIntro(){
+      if (!debugLog.textContent){
+        await logLine("> LOVE SYSTEM STATUS: ❌", 10);
+        await logLine("> Found: 4 bugs 🐛", 10);
+        await logLine("> Gate requires 3 solves: Python easy → Python harder → about Imad.", 10);
+        await logLine("> After gate: last 2 bug fixes unlock. Then deploy message.", 10);
+        debugLog.textContent += "\n";
+      }
+    }
+
+    function normalizeAns(s){ return (s ?? "").toString().trim(); }
+
+    function normalizeDDMM(s){
+      let t = normalizeAns(s).replace(/\s+/g,"").replace("-", "/");
+      const m = t.match(/^(\d{1,2})\/(\d{1,2})$/);
+      if (!m) return "";
+      const dd = String(parseInt(m[1],10)).padStart(2,"0");
+      const mm = String(parseInt(m[2],10)).padStart(2,"0");
+      return `${dd}/${mm}`;
+    }
+
+    function updateDebugProgress(){
+      const fixed = bugs.filter(b => b.ok).length;
+      const solvedCount = gateSolved.filter(Boolean).length;
+
+      fixStatusEl.textContent = `Status: ${fixed}/4 fixed`;
+      gateStatusEl.textContent = `Gate: ${solvedCount}/3 solved`;
+
+      const gateAll = solvedCount === 3;
+
+      if (!gateAll){
+        if (!bugs[2].ok){ fixBtns[2].disabled = true; fixBtns[2].textContent = "LOCKED"; }
+        if (!bugs[3].ok){ fixBtns[3].disabled = true; fixBtns[3].textContent = "LOCKED"; }
+      } else {
+        if (!bugs[2].ok){ fixBtns[2].disabled = false; fixBtns[2].textContent = "FIX BUG"; }
+        if (!bugs[3].ok){ fixBtns[3].disabled = false; fixBtns[3].textContent = "FIX BUG"; }
+      }
+
+      const canDeploy = gateAll && fixed === 4;
+      deployBtn.disabled = !canDeploy;
+      deployBtn.textContent = canDeploy ? "DEPLOY MESSAGE 💌" : "DEPLOY MESSAGE 🔒";
+    }
+
+    function renderGate(){
+      for (let i=0;i<3;i++){
+        stepEls[i].classList.toggle("ok", gateSolved[i]);
+      }
+
+      const ch = gateChallenges[gateIndex];
+      gatePrompt.textContent = ch.prompt;
+
+      gateMsg.textContent = gateSolved[gateIndex]
+        ? "✅ Already solved. Continue to the next one."
+        : "Solve this step to continue 🔓";
+      gateMsg.style.color = "rgba(255,255,255,.86)";
+
+      gateInput.value = "";
+      gateInput.focus();
+
+      updateDebugProgress();
+    }
+
+    function checkGate(){
+      const ch = gateChallenges[gateIndex];
+      const enteredRaw = normalizeAns(gateInput.value);
+
+      let entered = enteredRaw;
+      let target = ch.answer;
+
+      if (ch.kind === "about"){
+        entered = normalizeDDMM(enteredRaw);
+        target = normalizeDDMM(ch.answer);
+      }
+
+      if (entered === target){
+        gateSolved[gateIndex] = true;
+        stepEls[gateIndex].classList.add("ok");
+
+        gateMsg.textContent = "✅ Correct! Moving to next step…";
+        gateMsg.style.color = "var(--ok)";
+
+        sparkle(60);
+        burstHearts(50);
+
+        let next = gateSolved.findIndex((v, i) => !v && i > gateIndex);
+        if (next === -1) next = gateSolved.findIndex(v => !v);
+
+        if (next === -1){
+          gatePrompt.textContent =
+`✅ Gate complete!
+All 3 challenges solved.
+
+Now fix the remaining bugs on the right → then DEPLOY 💌`;
+          gateInput.value = "";
+          gateInput.placeholder = "Gate complete ✅";
+          updateDebugProgress();
+          logLine("> ✅ Gate solved (3/3). Unlocking remaining bug fixes...", 10);
+          megaExplosion(0.45);
+          return;
+        }
+
+        gateIndex = next;
+        setTimeout(renderGate, 420);
+      } else {
+        gateMsg.textContent = "❌ Not quite. Try again (unlimited tries).";
+        gateMsg.style.color = "var(--bad)";
+        sparkle(18);
+        gateInput.focus();
+        gateInput.select();
+      }
+
+      updateDebugProgress();
+    }
+
+    async function fixBug(i){
+      if (bugs[i].ok) return;
+      if (fixBtns[i].disabled) return;
+
+      fixBtns[i].disabled = true;
+
+      await logLine(`> ${bugs[i].label}`, 10);
+      sparkle(30);
+      burstHearts(24);
+
+      await sleep(180);
+      await logLine(bugs[i].extra, 10);
+
+      bugs[i].ok = true;
+      bugEls[i].classList.add("ok");
+      sparkle(45);
+      burstHearts(34);
+
+      updateDebugProgress();
+
+      const fixed = bugs.filter(b => b.ok).length;
+      const solvedCount = gateSolved.filter(Boolean).length;
+
+      if (fixed === 2 && solvedCount < 3){
+        await logLine("", 10);
+        await logLine("> 🔒 Remaining fixes locked until Gate = 3/3 solved.", 10);
+        sparkle(22);
+      }
+
+      if (fixed === 4 && solvedCount === 3){
+        await logLine("", 10);
+        await logLine("> ✔ All checks passed", 10);
+        await logLine(`> console.log("Happy Birthday, ${GIRL_NAME} 💗🐱")`, 10);
+        sparkle(80);
+        burstHearts(70);
+      }
+    }
+
+    function resetDebugState(){
+      for (let i=0;i<bugs.length;i++){
+        bugs[i].ok = false;
+        bugEls[i].classList.remove("ok");
+        fixBtns[i].disabled = false;
+        fixBtns[i].textContent = "FIX BUG";
+      }
+
+      gateIndex = 0;
+      gateSolved[0] = gateSolved[1] = gateSolved[2] = false;
+      stepEls.forEach(s => s.classList.remove("ok"));
+      gateInput.placeholder = "Type the output / answer here…";
+
+      fixBtns[2].disabled = true; fixBtns[2].textContent = "LOCKED";
+      fixBtns[3].disabled = true; fixBtns[3].textContent = "LOCKED";
+
+      deployBtn.disabled = true;
+      deployBtn.textContent = "DEPLOY MESSAGE 🔒";
+
+      debugLog.textContent = "";
+
+      renderGate();
+      updateDebugProgress();
+    }
+
+    /**********************
+     * Matrix background
+     **********************/
+    const matrix = document.getElementById("matrix");
+    const mctx = matrix.getContext("2d");
+
+    const matrixState = {
+      fontSize: 18,
+      columns: [],
+      boost: 1.0,
+      chars: "アイウエオカキクケコサシスセソタチツテトナニヌネノ0123456789{}[]()<>/\\|;:.,+-=*#$_"
+    };
+
+    function resizeMatrix(){
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      matrix.width = Math.floor(innerWidth * dpr);
+      matrix.height = Math.floor(innerHeight * dpr);
+      matrix.style.width = innerWidth + "px";
+      matrix.style.height = innerHeight + "px";
+      mctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      const cols = Math.floor(innerWidth / matrixState.fontSize);
+      matrixState.columns = new Array(cols).fill(0).map(() => Math.random() * innerHeight);
+    }
+    window.addEventListener("resize", resizeMatrix);
+    resizeMatrix();
+
+    function drawMatrix(){
+      mctx.fillStyle = "rgba(5,6,10,0.12)";
+      mctx.fillRect(0,0,innerWidth,innerHeight);
+
+      mctx.font = `${matrixState.fontSize}px monospace`;
+
+      for (let i = 0; i < matrixState.columns.length; i++){
+        const x = i * matrixState.fontSize;
+        const y = matrixState.columns[i];
+
+        const glow = revealed ? 0.95 : 0.75;
+        mctx.fillStyle = `rgba(0,255,140,${glow})`;
+        const ch = matrixState.chars[Math.floor(Math.random() * matrixState.chars.length)];
+        mctx.fillText(ch, x, y);
+
+        const speed = (revealed ? 8.5 : 6.2) * matrixState.boost;
+        matrixState.columns[i] += speed;
+
+        if (matrixState.columns[i] > innerHeight + 40 && Math.random() > 0.975){
+          matrixState.columns[i] = -Math.random() * 200;
+        }
+      }
+      requestAnimationFrame(drawMatrix);
+    }
+    drawMatrix();
+
+    /**********************
+     * Hearts overlay (canvas hearts)
+     **********************/
+    const heartsCanvas = document.getElementById("hearts");
+    const hctx = heartsCanvas.getContext("2d");
+
+    function resizeHearts(){
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      heartsCanvas.width = Math.floor(innerWidth * dpr);
+      heartsCanvas.height = Math.floor(innerHeight * dpr);
+      heartsCanvas.style.width = innerWidth + "px";
+      heartsCanvas.style.height = innerHeight + "px";
+      hctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    window.addEventListener("resize", resizeHearts);
+    resizeHearts();
+
+    const hearts = [];
+    function heartPath(ctx,x,y,s,rot){
+      ctx.save();
+      ctx.translate(x,y);
+      ctx.rotate(rot);
+      ctx.beginPath();
+      ctx.moveTo(0, -s*0.2);
+      ctx.bezierCurveTo(s*0.6, -s*0.9, s*1.3, -s*0.05, 0, s*0.9);
+      ctx.bezierCurveTo(-s*1.3, -s*0.05, -s*0.6, -s*0.9, 0, -s*0.2);
+      ctx.closePath();
+      ctx.restore();
+    }
+    function addHeart(x,y,boost=false){
+      const size = rand(8, boost ? 26 : 16);
+      hearts.push({
+        x,y,
+        vx: rand(-1.2, 1.2),
+        vy: rand(-3.3, -1.1) * (boost ? 1.25 : 1),
+        g: rand(0.04, 0.07),
+        size,
+        rot: rand(-0.9, 0.9),
+        vr: rand(-0.06, 0.06),
+        life: 0,
+        ttl: rand(120, boost ? 210 : 165),
+        alpha: 1,
+        hue: rand(320, 360)
+      });
+    }
+    function burstHearts(n=30, cx=innerWidth/2, cy=innerHeight/2){
+      for (let i=0;i<n;i++){
+        addHeart(cx + rand(-70,70), cy + rand(-50,50), true);
+      }
+    }
+    setInterval(()=>{
+      addHeart(rand(0, innerWidth), innerHeight + 20, false);
+    }, 150);
+
+    function tickHearts(){
+      hctx.clearRect(0,0,innerWidth,innerHeight);
+      for (let i=hearts.length-1;i>=0;i--){
+        const p = hearts[i];
+        p.life++;
+        p.vy += p.g;
+        p.x += p.vx;
+        p.y += p.vy;
+        p.rot += p.vr;
+
+        const t = p.life / p.ttl;
+        p.alpha = Math.max(0, 1 - t);
+
+        hctx.save();
+        hctx.globalAlpha = p.alpha;
+        hctx.fillStyle = `hsla(${p.hue}, 90%, 72%, ${p.alpha})`;
+        heartPath(hctx, p.x, p.y, p.size, p.rot);
+        hctx.fill();
+        hctx.restore();
+
+        if (p.life >= p.ttl || p.y < -100 || p.x < -140 || p.x > innerWidth + 140){
+          hearts.splice(i,1);
+        }
+      }
+      requestAnimationFrame(tickHearts);
+    }
+    tickHearts();
+
+    /**********************
+     * FX Canvas (sparkles/confetti/rings)
+     **********************/
+    const fxCanvas = document.getElementById("fx");
+    const fx = fxCanvas.getContext("2d");
+
+    function resizeFx(){
+      const dpr = Math.max(1, window.devicePixelRatio || 1);
+      fxCanvas.width = Math.floor(innerWidth * dpr);
+      fxCanvas.height = Math.floor(innerHeight * dpr);
+      fxCanvas.style.width = innerWidth + "px";
+      fxCanvas.style.height = innerHeight + "px";
+      fx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+    window.addEventListener("resize", resizeFx);
+    resizeFx();
+
+    const particles = [];
+    function addParticle(p){ particles.push(p); }
+
+    function sparkle(n=60, cx=innerWidth/2, cy=innerHeight/2){
+      for (let i=0;i<n;i++){
+        const a = rand(0, Math.PI*2);
+        const sp = rand(1.5, 7.8);
+        addParticle({
+          type:"spark",
+          x: cx, y: cy,
+          vx: Math.cos(a)*sp,
+          vy: Math.sin(a)*sp,
+          g: 0.02,
+          life: 0,
+          ttl: rand(35, 70),
+          r: rand(1.2, 2.6),
+          alpha: 1
+        });
+      }
+    }
+
+    function confetti(n=140, cx=innerWidth/2, cy=innerHeight*0.15){
+      for (let i=0;i<n;i++){
+        addParticle({
+          type:"conf",
+          x: cx + rand(-30,30),
+          y: cy + rand(-10,10),
+          vx: rand(-4.2, 4.2),
+          vy: rand(1.0, 7.2),
+          g: rand(0.04, 0.08),
+          life: 0,
+          ttl: rand(90, 170),
+          w: rand(3,6),
+          h: rand(8,14),
+          rot: rand(0, Math.PI),
+          vr: rand(-0.2,0.2),
+          hue: rand(300, 360),
+          alpha: 1
+        });
+      }
+    }
+
+    function shockwave(cx=innerWidth/2, cy=innerHeight/2){
+      addParticle({ type:"ring", x: cx, y: cy, life: 0, ttl: 40, r: 0, alpha: 1 });
+    }
+
+    function megaExplosion(mult=1.0, cx=innerWidth/2, cy=innerHeight/2){
+      shockwave(cx, cy);
+      sparkle(Math.floor(180*mult), cx, cy);
+      confetti(Math.floor(180*mult), cx, Math.max(40, cy-220));
+      burstHearts(Math.floor(120*mult), cx, cy);
+
+      for (let k=0;k<4;k++){
+        sparkle(Math.floor(90*mult), cx + rand(-220,220), cy + rand(-160,160));
+        burstHearts(Math.floor(50*mult), cx + rand(-240,240), cy + rand(-180,180));
+      }
+    }
+
+    function tickFx(){
+      fx.clearRect(0,0,innerWidth,innerHeight);
+
+      for (let i=particles.length-1;i>=0;i--){
+        const p = particles[i];
+        p.life++;
+        const t = p.life / p.ttl;
+        p.alpha = Math.max(0, 1 - t);
+
+        if (p.type === "spark"){
+          p.vy += p.g;
+          p.x += p.vx;
+          p.y += p.vy;
+          fx.save();
+          fx.globalAlpha = p.alpha;
+          fx.beginPath();
+          fx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+          fx.fillStyle = `rgba(255,120,200,${p.alpha})`;
+          fx.fill();
+          fx.restore();
+        } else if (p.type === "conf"){
+          p.vy += p.g;
+          p.x += p.vx;
+          p.y += p.vy;
+          p.rot += p.vr;
+          fx.save();
+          fx.globalAlpha = p.alpha;
+          fx.translate(p.x, p.y);
+          fx.rotate(p.rot);
+          fx.fillStyle = `hsla(${p.hue}, 95%, 70%, ${p.alpha})`;
+          fx.fillRect(-p.w/2, -p.h/2, p.w, p.h);
+          fx.restore();
+        } else if (p.type === "ring"){
+          p.r += 18;
+          fx.save();
+          fx.globalAlpha = p.alpha;
+          fx.lineWidth = 3;
+          fx.strokeStyle = `rgba(255,120,200,${p.alpha})`;
+          fx.beginPath();
+          fx.arc(p.x, p.y, p.r, 0, Math.PI*2);
+          fx.stroke();
+          fx.restore();
+        }
+
+        if (p.life >= p.ttl) particles.splice(i,1);
+      }
+      requestAnimationFrame(tickFx);
+    }
+    tickFx();
+
+    /**********************
+     * Wire up buttons ONCE (no redeclare errors)
+     **********************/
+    el("testBtn").addEventListener("click", doReveal);
+    el("burstBtn").addEventListener("click", () => burstHearts(55));
+    el("backBtn").addEventListener("click", resetAll);
+
+    el("launchBtn").addEventListener("click", () => {
+      showExplosion();
+      megaExplosion(1.2);
+    });
+
+    el("explodeMoreBtn").addEventListener("click", () => megaExplosion(1.0));
+    el("closeExplosionBtn").addEventListener("click", hideExplosion);
+
+    checkCodeBtn.addEventListener("click", tryUnlock);
+    codeInput.addEventListener("keydown", (e) => { if (e.key === "Enter") tryUnlock(); });
+
+    goDebugBtn.addEventListener("click", () => {
+      if (!unlocked) return;
+      hideExplosion();
+      resetDebugState();
+      showDebug();
+    });
+
+    el("closeDebugBtn").addEventListener("click", hideDebug);
+
+    gateCheckBtn.addEventListener("click", checkGate);
+    gateInput.addEventListener("keydown", (e) => { if (e.key === "Enter") checkGate(); });
+    gateHintBtn.addEventListener("click", () => {
+      const ch = gateChallenges[gateIndex];
+      gateMsg.textContent = `Hint: ${ch.hint}`;
+      gateMsg.style.color = "rgba(255,255,255,.86)";
+      sparkle(12);
+    });
+
+    fixBtns.forEach((btn, i) => btn.addEventListener("click", () => fixBug(i)));
+
+    deployBtn.addEventListener("click", () => {
+      if (deployBtn.disabled) return;
+      hideDebug();
+      showMessage();
+    });
+
+    el("replayMsgBtn").addEventListener("click", () => typeMessage(YOUR_MESSAGE));
+    el("closeMsgBtn").addEventListener("click", hideMessage);
+
+    window.addEventListener("pointerdown", (e) => {
+      if (explosionScreen.classList.contains("show")) {
+        megaExplosion(0.55, e.clientX, e.clientY);
+      } else if (debugScreen.classList.contains("show")) {
+        sparkle(18, e.clientX, e.clientY);
+        burstHearts(12, e.clientX, e.clientY);
+      } else if (messageScreen.classList.contains("show")) {
+        sparkle(12, e.clientX, e.clientY);
+        burstHearts(10, e.clientX, e.clientY);
+      } else {
+        burstHearts(revealed ? 24 : 14, e.clientX, e.clientY);
+      }
+    });
+
+    /**********************
+     * Init
+     **********************/
+    setInterval(updateCountdown, 250);
+    updateCountdown();
+    resetDebugState();
+  </script>
+</body>
+</html>
